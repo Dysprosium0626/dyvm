@@ -31,4 +31,9 @@
 *.exe
 *.out
 *.app
+*.zip
 
+.DS_Store
+cmake-build-debug
+.idea
+build
