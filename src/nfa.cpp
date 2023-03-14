@@ -151,7 +151,7 @@ NFA NFA::Closure(NFA nfa1, int &state_id) {
 
   auto accept_state = std::make_shared<State>(state_id++);
   nfa1.accept->AddTransition('E', accept_state);
-  accept_state->AddTransition('E', start_state);
+  start_state->AddTransition('E', accept_state);
 
   NFA closure_nfa(start_state, accept_state);
   return closure_nfa;
