@@ -39,6 +39,7 @@ void NFA::Print() {
   }
   std::cout << std::endl;
 }
+
 void NFA::PopCalculate(std::stack<char> &s, std::stack<NFA> &nfa_stack, int &state_id) {
   char op = s.top();
   s.pop();  // Pop up the operator stack

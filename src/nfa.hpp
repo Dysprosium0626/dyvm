@@ -32,7 +32,6 @@ class State {
     }
     transitions[input].push_back(next_state);
   }
-
 };
 
 // The transition of a nfa

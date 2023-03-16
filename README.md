@@ -52,7 +52,7 @@ Please see the CMake documentation and CMakeLists.txt for more advanced usage.
 ![img.png](doc/img/calculation.png)
 可以看到成功计算出由整数和加减乘除左右括号组成的中缀表达式的值。
 
-## 题目2.1 正则表达式的识别
+## 题目2.1 正则表达式的识别 && 题目2.3 正则表达式转换为NFA
 由于对于正则表达式的识别这个标题我不理解最终的输出格式，于是我直接将正则表达式转化成NFA。最终的输入输出如图所示。
 主要的工程文件为`src/nfa.hpp`和`src/nfa.cpp`
 在`main.cpp`中构建了一段测试代码，实现了从`./test/regex-input.txt`中读取正则表达式，并将其转化为NFA后输出的效果。
@@ -60,3 +60,10 @@ Please see the CMake documentation and CMakeLists.txt for more advanced usage.
 
 ![img.png](doc/img/regex_main.png)
 ![regex.png](doc/img/regex.png)
+
+## 题目2.5 NFA到DFA转换
+主要的工程文件为`src/dfa.hpp`和`src/dfa.cpp`
+在`main.cpp`中构建了一段测试代码，实现了从NFA转化为DFA的过程，在这个过程中，首先求出起始节点的Epsilon闭包，并对后续每个结点分别求Epsilon闭包，直到所有的DFA结点不再有Epsilon闭包为止。
+![img.png](doc/img/dfa.png)
+从途中可以看到，我们求出了之前NFA所对应的DFA：
+![img.png](doc/img/dfa_graph.png)

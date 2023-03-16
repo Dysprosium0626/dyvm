@@ -12,17 +12,20 @@ namespace dyvm {
 class DFAState {
  public:
   explicit DFAState() {};
-  explicit DFAState(const std::unordered_set<std::shared_ptr<State>> &states) : states(states) {}
+  explicit DFAState(int id) : id(id) {};
+  explicit DFAState(const std::unordered_set<std::shared_ptr<State>> &states) : states(states) {
+  }
   int id;
   std::unordered_set<std::shared_ptr<State>> states;
-  std::unordered_map<char, std::vector<std::unordered_set<std::shared_ptr<State>>>> transitions;
+  std::unordered_map<char, std::vector<DFAState>> transitions;
 
-  void AddTransition(char input, std::unordered_set<std::shared_ptr<State>> next_state) {
+  void AddTransition(char input, DFAState next_state) {
     if (transitions.find(input) == transitions.end()) {
-      transitions[input] = std::vector<std::unordered_set<std::shared_ptr<State>>>();
+      transitions[input] = std::vector<DFAState>();
     }
     transitions[input].push_back(next_state);
   }
+
 };
 
 class DFATransition {
@@ -45,12 +48,13 @@ class DFA : NFA {
   DFA(NFA &nfa) : NFA(nfa) {
 //    ConvertNFAToDFA();
   };
-
+  std::shared_ptr<DFAState> d_start;
   std::vector<DFAState> states;
 
   // To covert NFA to DFA by subset construction algorithm
   void ConvertNFAToDFA();
   DFAState EpsilonEnclosure(std::shared_ptr<State> state, char input = 'E');
+
 };
 
 } // dyvm
