@@ -67,3 +67,9 @@ Please see the CMake documentation and CMakeLists.txt for more advanced usage.
 ![img.png](doc/img/dfa.png)
 从途中可以看到，我们求出了之前NFA所对应的DFA：
 ![img.png](doc/img/dfa_graph.png)
+
+
+##
+主要的工程文件为`src/dfa.hpp`和`src/dfa.cpp`，并且在2.5的基础之上增加`void MinimizeDFA()`函数
+在`main.cpp`中最后通过这个函数将DFA最小化，最后结果在终端中输出，可以看见，原来5个DFA状态被重新分为了4个DFA状态。
+![img.png](doc/img/mini_dfa.png)

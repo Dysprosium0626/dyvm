@@ -4,7 +4,7 @@
 
 #include "dfa.hpp"
 #include <unordered_set>
-
+#include <queue>
 namespace dyvm {
 
 bool SameSet(std::unordered_set<int> &s1, std::unordered_set<int> &s2) {
@@ -22,7 +22,7 @@ bool SameSet(std::unordered_set<int> &s1, std::unordered_set<int> &s2) {
   return intersect.size() == s1.size();
 }
 
-bool TwoSetExist(std::unordered_set<std::shared_ptr<DFAState>> visited,
+bool TwoSetExist(const std::unordered_set<std::shared_ptr<DFAState>>& visited,
                  DFAState &dfa) {
   auto set = dfa.states;
   bool result = false;
@@ -51,6 +51,7 @@ void DFA::ConvertNFAToDFA() {
   auto dfa_state = EpsilonEnclosure(start);
   int dfa_state_id = 0;
   dfa_state.id = dfa_state_id;
+  d_start = std::make_shared<DFAState>(dfa_state);
   std::unordered_set<std::shared_ptr<DFAState>> visited;
   std::vector<DFAState> to_visit;
 
@@ -71,6 +72,8 @@ void DFA::ConvertNFAToDFA() {
         auto input = transition.first;
         if (input == 'E') {
           continue;
+        } else {
+          alphabet.insert(input);
         }
         auto next_states = transition.second;
 
@@ -97,6 +100,13 @@ void DFA::ConvertNFAToDFA() {
     }
     states.push_back(current_state);
   }
+  for (auto &item : states) {
+    for (const auto &state : item.states) {
+      if (state->id == accept->id) {
+        item.accepted = true;
+      }
+    }
+  }
 }
 
 DFAState DFA::EpsilonEnclosure(std::shared_ptr<State> state, char input) {
@@ -117,4 +127,108 @@ DFAState DFA::EpsilonEnclosure(std::shared_ptr<State> state, char input) {
   }
   return visited;
 }
+
+DFAState GetCertainDFAState(std::vector<DFAState> states, int id) {
+  for (const auto &state : states) {
+    if (state.id == id) {
+      return state;
+    }
+  }
+}
+int GetGroupById(std::deque<std::vector<int>> worklist, int id) {
+  for (int i = 0; i < worklist.size(); ++i) {
+    if (auto res = std::find(worklist[i].begin(), worklist[i].end(), id); res != worklist[i].end()) {
+      return i+1;
+    }
+  }
+}
+
+void DFA::MinimizeDFA() {
+  std::vector<std::vector<int>> partitions = {{}, {}};
+  for (const auto &state : states) {
+    partitions[state.accepted].push_back(state.id);
+  }
+
+  std::deque<std::vector<int>> worklist;
+  for (const auto &partition : partitions) {
+      worklist.push_back(partition);
+  }
+  int unchanged = 0;
+  while (!worklist.empty()) {
+    int size_before = worklist.size();
+    auto partition = worklist.front();
+    std::unordered_map<int, std::vector<int>> partition_map;
+    for (const auto &id : partition) {
+      auto state = GetCertainDFAState(states, id);
+      auto hash_id = 0b0;
+      for (const auto &c : alphabet) {
+        auto transition = state.transitions[c];
+        if (transition.empty()) {
+          hash_id = 0b0 | (hash_id << 0b1);
+          continue;
+        } else {
+          auto group_id = GetGroupById(worklist, id);
+          hash_id = group_id | (hash_id << (static_cast<int>(log2(group_id)) + 1));
+        }
+      }
+      if (auto res = partition_map.find(hash_id); res != partition_map.end()) {
+        res->second.push_back(id);
+      } else {
+        partition_map.insert(std::make_pair(hash_id, std::vector<int>{id}));
+      }
+    }
+    worklist.pop_front();
+    for (const auto &[_, par] : partition_map) {
+      worklist.push_back(par);
+    }
+    if(worklist.size() != size_before) {
+      unchanged = 0;
+    } else {
+      unchanged++;
+    }
+    if (unchanged == worklist.size()) {
+      break;
+    }
+  }
+  // Refine new states
+
+
+
+
+
+  std::vector<DFAState> minimized_states;
+  for (int i = 0; i < worklist.size(); ++i) {
+    // Init all states
+    auto partition = worklist[i];
+    DFAState state;
+    state.id = i;
+    for (const auto &item : partition) {
+      auto dfa = GetCertainDFAState(states, item);
+      if(dfa.accepted) {
+        state.accepted = true;
+        break;
+      }
+    }
+    minimized_states.push_back(state);
+  }
+  // Add transitions
+  for (auto &state : minimized_states) {
+    auto partition = worklist[state.id];
+    for (const auto &id : partition) {
+      auto transitions = GetCertainDFAState(states, id).transitions;
+      for (const auto &[input, state_ids] : transitions) {
+        for (const auto &item : state_ids) {
+          for (int i = 0; i < worklist.size(); ++i) {
+            if(auto res = std::find(worklist[i].begin(), worklist[i].end(), item.id); res != worklist[i].end()) {
+              auto group_id = i;
+              state.AddTransition(input, minimized_states[group_id]);
+            }
+          }
+        }
+      }
+    }
+  }
+  states = minimized_states;
+}
+
 } // dyvm

@@ -17,15 +17,30 @@ int main() {
     std::cout << item->id << '\t' << std::endl;
   }
 
-  auto dfas = dfa.ConvertNFAToDFA();
+  dfa.ConvertNFAToDFA();
   for (const auto &d : dfa.states) {
-    std::cout << d.id << ' ';
+    std::cout << d.id <<' ' << &d << ' ' << "accepted " << d.accepted << ' ';
     for (const auto &t : d.transitions) {
       std::cout << t.first << ' ';
       for (const auto &item : t.second) {
-        std::cout << item.id << ' ';
+        std::cout << item.id << ' ' << &item;
       }
     }
     std::cout << std::endl;
   }
+  dfa.MinimizeDFA();
+  std::cout << "After minimize:" << std::endl;
+
+  for (const auto &d : dfa.states) {
+    std::cout << d.id <<' ' << &d << ' ' << "accepted " << d.accepted << ' ';
+    for (const auto &t : d.transitions) {
+      std::cout << t.first << ' ';
+      for (const auto &item : t.second) {
+        std::cout << item.id << ' ' << &item << ' ';
+      }
+    }
+    std::cout << std::endl;
+  }
+
+
 }

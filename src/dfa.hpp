@@ -16,8 +16,11 @@ class DFAState {
   explicit DFAState(const std::unordered_set<std::shared_ptr<State>> &states) : states(states) {
   }
   int id;
+  bool accepted = false;
   std::unordered_set<std::shared_ptr<State>> states;
   std::unordered_map<char, std::vector<DFAState>> transitions;
+
+
 
   void AddTransition(char input, DFAState next_state) {
     if (transitions.find(input) == transitions.end()) {
@@ -28,20 +31,6 @@ class DFAState {
 
 };
 
-class DFATransition {
- public:
-  // Input character
-  char input;
-
-  // Next states of a transition
-  std::vector<DFAState> next_states;
-
-  // Add a new next state for the transition
-  void AddNextState(DFAState state) {
-    next_states.push_back(state);
-  }
-};
-
 class DFA : NFA {
  public:
   DFA() {};
@@ -50,11 +39,12 @@ class DFA : NFA {
   };
   std::shared_ptr<DFAState> d_start;
   std::vector<DFAState> states;
+  std::unordered_set<char> alphabet;
 
   // To covert NFA to DFA by subset construction algorithm
   void ConvertNFAToDFA();
   DFAState EpsilonEnclosure(std::shared_ptr<State> state, char input = 'E');
-
+  void MinimizeDFA();
 };
 
 } // dyvm
