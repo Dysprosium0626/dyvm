@@ -22,7 +22,7 @@ bool SameSet(std::unordered_set<int> &s1, std::unordered_set<int> &s2) {
   return intersect.size() == s1.size();
 }
 
-bool TwoSetExist(const std::unordered_set<std::shared_ptr<DFAState>>& visited,
+bool TwoSetExist(const std::unordered_set<std::shared_ptr<DFAState>> &visited,
                  DFAState &dfa) {
   auto set = dfa.states;
   bool result = false;
@@ -67,6 +67,7 @@ void DFA::ConvertNFAToDFA() {
       std::cout << item->id << ' ';
     }
     std::cout << std::endl;
+    std::unordered_map<char, std::unordered_set<std::shared_ptr<State>>> temp;
     for (const auto &state : current_state.states) {
       for (const auto &transition : state->transitions) {
         auto input = transition.first;
@@ -76,26 +77,27 @@ void DFA::ConvertNFAToDFA() {
           alphabet.insert(input);
         }
         auto next_states = transition.second;
-
         std::unordered_set<std::shared_ptr<State>> next_states_set;
         for (const auto &next_state : next_states) {
           auto enclosure = EpsilonEnclosure(next_state);
           next_states_set.insert(enclosure.states.begin(), enclosure.states.end());
         }
-
-        DFAState next_dfa_state(next_states_set);
-        if (!TwoSetExist(visited, next_dfa_state)) {
-          next_dfa_state.id = visited.size();
-          visited.insert(std::make_shared<DFAState>(next_dfa_state));
-          to_visit.push_back(next_dfa_state);
-        }
-        current_state.AddTransition(input, next_dfa_state);
-        std::cout << "input: " << input << ' ';
-        for (const auto &i : next_dfa_state.states) {
-          std::cout << i->id << ' ';
-        }
-        std::cout << std::endl;
+        temp[input].insert(next_states_set.begin(), next_states_set.end());
       }
+    }
+    for (const auto &[input, set] : temp) {
+      DFAState next_dfa_state(set);
+      if (!TwoSetExist(visited, next_dfa_state)) {
+        next_dfa_state.id = visited.size();
+        visited.insert(std::make_shared<DFAState>(next_dfa_state));
+        to_visit.push_back(next_dfa_state);
+      }
+      current_state.AddTransition(input, next_dfa_state);
+      std::cout << "input: " << input << ' ';
+      for (const auto &i : next_dfa_state.states) {
+        std::cout << i->id << ' ';
+      }
+      std::cout << std::endl;
     }
     states.push_back(current_state);
   }
@@ -144,7 +146,7 @@ DFAState GetCertainDFAState(std::vector<DFAState> states, int id) {
 int GetGroupById(std::deque<std::vector<int>> worklist, int id) {
   for (int i = 0; i < worklist.size(); ++i) {
     if (auto res = std::find(worklist[i].begin(), worklist[i].end(), id); res != worklist[i].end()) {
-      return i+1;
+      return i;
     }
   }
 }
@@ -158,37 +160,55 @@ void DFA::MinimizeDFA() {
 
   std::deque<std::vector<int>> worklist;
   for (const auto &partition : partitions) {
-      worklist.push_back(partition);
+    worklist.push_back(partition);
   }
   int unchanged = 0;
+  int count = 0;
   while (!worklist.empty()) {
     int size_before = worklist.size();
     auto partition = worklist.front();
-    std::unordered_map<int, std::vector<int>> partition_map;
+    std::vector<int> image;
+    std::vector<int> diff;
+    auto group_id = 0;
     for (const auto &id : partition) {
       auto state = GetCertainDFAState(states, id);
-      auto hash_id = 0b0;
+      int t_count = 0;
+      int reflection = 0;
       for (const auto &c : alphabet) {
         auto transition = state.transitions[c];
-        if (transition.empty()) {
-          hash_id = 0b0 | (hash_id << 0b1);
-          continue;
-        } else {
-          auto group_id = GetGroupById(worklist, id);
-          hash_id = group_id | (hash_id << (static_cast<int>(log2(group_id)) + 1));
+        if (!transition.empty()) {
+          for (const auto &t : transition) {
+            t_count++;
+            if (GetGroupById(worklist, t.id) == group_id) {
+              reflection++;
+            }
+          }
         }
       }
-      if (auto res = partition_map.find(hash_id); res != partition_map.end()) {
-        res->second.push_back(id);
+      if (reflection == t_count) {
+        image.push_back(id);
       } else {
-        partition_map.insert(std::make_pair(hash_id, std::vector<int>{id}));
+        diff.push_back(id);
       }
     }
     worklist.pop_front();
-    for (const auto &[_, par] : partition_map) {
-      worklist.push_back(par);
+    if(image.size()) {
+      worklist.push_back(image);
     }
-    if(worklist.size() != size_before) {
+    if (diff.size()) {
+      worklist.push_back(diff);
+    }
+
+    std::cout << "count" << count << std::endl;
+    for (const auto &item : worklist) {
+      for (const auto &i : item) {
+        std::cout << i << ' ';
+      }
+      std::cout << std::endl;
+    }
+    count++;
+
+    if (worklist.size() != size_before) {
       unchanged = 0;
     } else {
       unchanged++;
@@ -208,11 +228,11 @@ void DFA::MinimizeDFA() {
     bool started = false;
     for (const auto &item : partition) {
       auto dfa = GetCertainDFAState(states, item);
-      if(dfa.accepted) {
+      if (dfa.accepted) {
         state.accepted = true;
         break;
       }
-      if (auto res = std::find(start_ids.begin(), start_ids.end(),item); res != start_ids.end() && !started) {
+      if (auto res = std::find(start_ids.begin(), start_ids.end(), item); res != start_ids.end() && !started) {
         mini_start_ids.push_back(state.id);
         started = true;
       }
@@ -220,6 +240,7 @@ void DFA::MinimizeDFA() {
     minimized_states.push_back(state);
   }
   // Add transitions
+  // TODO: Timeout
   for (auto &state : minimized_states) {
     auto partition = worklist[state.id];
     for (const auto &id : partition) {
@@ -227,9 +248,9 @@ void DFA::MinimizeDFA() {
       for (const auto &[input, state_ids] : transitions) {
         for (const auto &item : state_ids) {
           for (int i = 0; i < worklist.size(); ++i) {
-            if(auto res = std::find(worklist[i].begin(), worklist[i].end(), item.id); res != worklist[i].end()) {
+            if (auto res = std::find(worklist[i].begin(), worklist[i].end(), item.id); res != worklist[i].end()) {
               auto group_id = i;
-              if(state.transitions[input].empty()) {
+              if (state.transitions[input].empty()) {
                 state.AddTransition(input, minimized_states[group_id]);
               }
             }
