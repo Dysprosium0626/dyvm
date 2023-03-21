@@ -46,31 +46,31 @@ bool TwoSetExist(const std::unordered_set<std::shared_ptr<DFAState>>& visited,
   return result;
 }
 
-// TODO: assign an id to dfa_state
 void DFA::ConvertNFAToDFA() {
-  auto dfa_state = EpsilonEnclosure(start);
-  int dfa_state_id = 0;
-  dfa_state.id = dfa_state_id;
-  d_start = std::make_shared<DFAState>(dfa_state);
+  auto start_state = EpsilonEnclosure(start);
+  int start_state_id = 0;
+  start_state.id = start_state_id;
+  auto nfa_start_id = start->id;
   std::unordered_set<std::shared_ptr<DFAState>> visited;
   std::vector<DFAState> to_visit;
 
   // Init the visit array with the epsilon enclosure of the start state
-  to_visit.push_back(dfa_state);
-  visited.insert(std::make_shared<DFAState>(dfa_state));
+  to_visit.push_back(start_state);
+  visited.insert(std::make_shared<DFAState>(start_state));
+
   while (!to_visit.empty()) {
     // Get a state from the array
     auto current_state = to_visit.back();
     to_visit.pop_back();
-    std::cout << "current state: ";
-    for (const auto &item : current_state.states) {
-      std::cout << item->id << ' ';
-    }
-    std::cout << std::endl;
+//    std::cout << "current state: ";
+//    for (const auto &item : current_state.states) {
+//      std::cout << item->id << ' ';
+//    }
+//    std::cout << std::endl;
     for (const auto &state : current_state.states) {
       for (const auto &transition : state->transitions) {
         auto input = transition.first;
-        if (input == 'E') {
+        if (input == '\0') {
           continue;
         } else {
           alphabet.insert(input);
@@ -90,11 +90,11 @@ void DFA::ConvertNFAToDFA() {
           to_visit.push_back(next_dfa_state);
         }
         current_state.AddTransition(input, next_dfa_state);
-        std::cout << "input: " << input << ' ';
-        for (const auto &i : next_dfa_state.states) {
-          std::cout << i->id << ' ';
-        }
-        std::cout << std::endl;
+//        std::cout << "input: " << input << ' ';
+//        for (const auto &i : next_dfa_state.states) {
+//          std::cout << i->id << ' ';
+//        }
+//        std::cout << std::endl;
 
       }
     }
@@ -104,6 +104,13 @@ void DFA::ConvertNFAToDFA() {
     for (const auto &state : item.states) {
       if (state->id == accept->id) {
         item.accepted = true;
+      }
+    }
+  }
+  for (auto &item : states) {
+    for (const auto &state : item.states) {
+      if (state->id == start_state_id) {
+        start_ids.push_back(item.id);
       }
     }
   }
@@ -145,6 +152,7 @@ int GetGroupById(std::deque<std::vector<int>> worklist, int id) {
 
 void DFA::MinimizeDFA() {
   std::vector<std::vector<int>> partitions = {{}, {}};
+  std::vector<int> mini_start_ids;
   for (const auto &state : states) {
     partitions[state.accepted].push_back(state.id);
   }
@@ -190,23 +198,24 @@ void DFA::MinimizeDFA() {
       break;
     }
   }
+
   // Refine new states
-
-
-
-
-
   std::vector<DFAState> minimized_states;
   for (int i = 0; i < worklist.size(); ++i) {
     // Init all states
     auto partition = worklist[i];
     DFAState state;
     state.id = i;
+    bool started = false;
     for (const auto &item : partition) {
       auto dfa = GetCertainDFAState(states, item);
       if(dfa.accepted) {
         state.accepted = true;
         break;
+      }
+      if (auto res = std::find(start_ids.begin(), start_ids.end(),item); res != start_ids.end() && !started) {
+        mini_start_ids.push_back(state.id);
+        started = true;
       }
     }
     minimized_states.push_back(state);
@@ -221,7 +230,9 @@ void DFA::MinimizeDFA() {
           for (int i = 0; i < worklist.size(); ++i) {
             if(auto res = std::find(worklist[i].begin(), worklist[i].end(), item.id); res != worklist[i].end()) {
               auto group_id = i;
-              state.AddTransition(input, minimized_states[group_id]);
+              if(state.transitions[input].empty()) {
+                state.AddTransition(input, minimized_states[group_id]);
+              }
             }
           }
         }
@@ -229,6 +240,7 @@ void DFA::MinimizeDFA() {
     }
   }
   states = minimized_states;
+  start_ids = mini_start_ids;
 }
 
 } // dyvm

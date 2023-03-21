@@ -85,6 +85,8 @@ class NFA {
   // Single character
   NFA SingleChar(char c, int &state_id);
 
+  NFA Hyphen(NFA nfa1, NFA nfa2, int &state_id);
+
 };
 
 } // dyvm

@@ -13,7 +13,8 @@ namespace dyvm {
 static const std::unordered_map<char, int> priority_{
     {'|', 1},
     {'.', 2},
-    {'*', 3}
+    {'*', 3},
+    {'-', 4}
 };
 
 void NFA::Print() {
@@ -64,6 +65,13 @@ void NFA::PopCalculate(std::stack<char> &s, std::stack<NFA> &nfa_stack, int &sta
     nfa_stack.pop();
     NFA closure_nfa = Closure(x, state_id);
     nfa_stack.push(closure_nfa);  // Push the result into the number vector.
+  } else if (op == '-') {
+    NFA y = nfa_stack.top();
+    nfa_stack.pop();
+    NFA x = nfa_stack.top();
+    nfa_stack.pop();
+    NFA hyphen_nfa = Hyphen(x, y, state_id);
+    nfa_stack.push(hyphen_nfa);   // Push the result into the state vector.
   } else {
     std::cerr << "Unrecognized operator" << std::endl;
   }
@@ -72,7 +80,9 @@ NFA NFA::RegexToNFA(std::string regex) {
   std::stack<char> s;
   std::stack<NFA> nfa_stack;
   int state_id = 0;
-  for (const auto &c : regex) {
+  for (int i = 0; i < regex.size(); ++i) {
+    auto c = regex[i];
+
     if (c == '(') {
       s.push(c);
     } else if (c == ')') {
@@ -87,24 +97,48 @@ NFA NFA::RegexToNFA(std::string regex) {
         }
         s.pop();
       }
+    } else if (c == '[') {
+      s.push(c);
+    } else if (c == ']') {
+      if (s.empty()) {
+        break;
+      } else {
+        while (s.top() != '[') {
+          PopCalculate(s, nfa_stack, state_id);
+          if (s.empty()) {
+            break;
+          }
+        }
+        s.pop();
+      }
     } else if (c == '.') {
-      while (!s.empty() && s.top() != '('
+      while (!s.empty() && s.top() != '(' && s.top() != '['
           && priority_.find(s.top())->second >= priority_.find(c)->second) {
         PopCalculate(s, nfa_stack, state_id);
       }
       s.push(c);
     } else if (c == '|') {
-      while (!s.empty() && s.top() != '('
+      while (!s.empty() && s.top() != '(' && s.top() != '['
           && priority_.find(s.top())->second >= priority_.find(c)->second) {
         PopCalculate(s, nfa_stack, state_id);
       }
       s.push(c);
     } else if (c == '*') {
-      while (!s.empty() && s.top() != '('
+      while (!s.empty() && s.top() != '(' && s.top() != '['
           && priority_.find(s.top())->second >= priority_.find(c)->second) {
         PopCalculate(s, nfa_stack, state_id);
       }
       s.push(c);
+    } else if (c == '-') {
+      while (!s.empty() && s.top() != '(' && s.top() != '['
+          && priority_.find(s.top())->second >= priority_.find(c)->second) {
+        PopCalculate(s, nfa_stack, state_id);
+      }
+      s.push(c);
+    } else if (c == '\\') {
+      NFA single_char_nfa = SingleChar(regex[i+2], state_id);
+      nfa_stack.push(single_char_nfa);
+      break;
     } else {
       NFA single_char_nfa = SingleChar(c, state_id);
       nfa_stack.push(single_char_nfa);
@@ -121,7 +155,7 @@ NFA NFA::Concat(NFA nfa1, NFA nfa2, int &state_id) {
   //
   // start_state -----> nfa1 -----> nfa2 -----> accept_state
   //
-  nfa1.accept->AddTransition('E', nfa2.start);
+  nfa1.accept->AddTransition('\0', nfa2.start);
   NFA concat_nfa(nfa1.start, nfa2.accept);
   return concat_nfa;
 }
@@ -132,12 +166,12 @@ NFA NFA::Or(NFA nfa1, NFA nfa2, int state_id) {
   //                  \             /
   //                    --- nfa2 -->
   auto start_state = std::make_shared<State>(state_id++);
-  start_state->AddTransition('E', nfa1.start);
-  start_state->AddTransition('E', nfa2.start);
+  start_state->AddTransition('\0', nfa1.start);
+  start_state->AddTransition('\0', nfa2.start);
 
   auto accept_state = std::make_shared<State>(state_id++);
-  nfa1.accept->AddTransition('E', accept_state);
-  nfa2.accept->AddTransition('E', accept_state);
+  nfa1.accept->AddTransition('\0', accept_state);
+  nfa2.accept->AddTransition('\0', accept_state);
 
   NFA or_nfa(start_state, accept_state);
   return or_nfa;
@@ -147,12 +181,12 @@ NFA NFA::Closure(NFA nfa1, int &state_id) {
   //               |           |
   //                <----------
   auto start_state = std::make_shared<State>(state_id++);
-  start_state->AddTransition('E', nfa1.start);
-  nfa1.accept->AddTransition('E', start_state);
+  start_state->AddTransition('\0', nfa1.start);
+  nfa1.accept->AddTransition('\0', start_state);
 
   auto accept_state = std::make_shared<State>(state_id++);
-  nfa1.accept->AddTransition('E', accept_state);
-  start_state->AddTransition('E', accept_state);
+  nfa1.accept->AddTransition('\0', accept_state);
+  start_state->AddTransition('\0', accept_state);
 
   NFA closure_nfa(start_state, accept_state);
   return closure_nfa;
@@ -164,6 +198,24 @@ NFA NFA::SingleChar(char c, int &state_id) {
   start_state->AddTransition(c, accept_state);
   NFA single_char_nfa(start_state, accept_state);
   return single_char_nfa;
+}
+
+NFA NFA::Hyphen(NFA nfa1, NFA nfa2, int &state_id) {
+  auto start_state = std::make_shared<State>(state_id++);
+  auto accept_state = std::make_shared<State>(state_id++);
+  NFA start_nfa = NFA(start_state, accept_state);
+  auto x = nfa1.start->transitions.begin()->first;
+  auto y = nfa2.start->transitions.begin()->first;
+  if (x >= y) {
+    std::cerr << "Error in hyphen operator" << std::endl;
+  }
+  for (int i = 0; i <= (y - x); ++i) {
+    auto nfa = SingleChar(x + i, state_id);
+    start_state->AddTransition('\0', nfa.start);
+    nfa.accept->AddTransition('\0', accept_state);
+  }
+  NFA or_nfa(start_state, accept_state);
+  return or_nfa;
 }
 
 } // dyvm

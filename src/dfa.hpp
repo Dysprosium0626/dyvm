@@ -37,13 +37,13 @@ class DFA : NFA {
   DFA(NFA &nfa) : NFA(nfa) {
 //    ConvertNFAToDFA();
   };
-  std::shared_ptr<DFAState> d_start;
+  std::vector<int> start_ids;
   std::vector<DFAState> states;
   std::unordered_set<char> alphabet;
 
   // To covert NFA to DFA by subset construction algorithm
   void ConvertNFAToDFA();
-  DFAState EpsilonEnclosure(std::shared_ptr<State> state, char input = 'E');
+  DFAState EpsilonEnclosure(std::shared_ptr<State> state, char input = '\0');
   void MinimizeDFA();
 };
 
