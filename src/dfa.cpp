@@ -62,11 +62,11 @@ void DFA::ConvertNFAToDFA() {
     // Get a state from the array
     auto current_state = to_visit.back();
     to_visit.pop_back();
-//    std::cout << "current state: ";
-//    for (const auto &item : current_state.states) {
-//      std::cout << item->id << ' ';
-//    }
-//    std::cout << std::endl;
+    std::cout << "current state: ";
+    for (const auto &item : current_state.states) {
+      std::cout << item->id << ' ';
+    }
+    std::cout << std::endl;
     for (const auto &state : current_state.states) {
       for (const auto &transition : state->transitions) {
         auto input = transition.first;
@@ -90,12 +90,11 @@ void DFA::ConvertNFAToDFA() {
           to_visit.push_back(next_dfa_state);
         }
         current_state.AddTransition(input, next_dfa_state);
-//        std::cout << "input: " << input << ' ';
-//        for (const auto &i : next_dfa_state.states) {
-//          std::cout << i->id << ' ';
-//        }
-//        std::cout << std::endl;
-
+        std::cout << "input: " << input << ' ';
+        for (const auto &i : next_dfa_state.states) {
+          std::cout << i->id << ' ';
+        }
+        std::cout << std::endl;
       }
     }
     states.push_back(current_state);
@@ -109,7 +108,7 @@ void DFA::ConvertNFAToDFA() {
   }
   for (auto &item : states) {
     for (const auto &state : item.states) {
-      if (state->id == start_state_id) {
+      if (state->id == nfa_start_id) {
         start_ids.push_back(item.id);
       }
     }

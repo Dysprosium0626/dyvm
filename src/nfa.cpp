@@ -136,7 +136,7 @@ NFA NFA::RegexToNFA(std::string regex) {
       }
       s.push(c);
     } else if (c == '\\') {
-      NFA single_char_nfa = SingleChar(regex[i+2], state_id);
+      NFA single_char_nfa = SingleChar(regex[i+1], state_id);
       nfa_stack.push(single_char_nfa);
       break;
     } else {

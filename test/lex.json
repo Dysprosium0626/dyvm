@@ -1,0 +1,20 @@
+{
+  "a-type": "((i.n.t)|(f.l.o.a.t))",
+  "a-reserved": "((i.n.c.l.u.d.e)|(u.s.i.n.g)|(n.a.m.e.s.p.a.c.e)|(e.l.s.e)|(w.h.i.l.e)|(c.o.n.t.i.n.u.e))",
+  "number": "([0-9]).([0-9])*",
+  "identifier": "[a-z]",
+  "lbracket": "\\(",
+  "rbracket": "\\)",
+  "l-curly-bracket": "{",
+  "r-curly-bracket": "}",
+  "l-angle-bracket": "<",
+  "r-angle-bracket": ">",
+  "number-sign": "#",
+  "semi-colon": ";",
+  "equal": "=",
+  "quote": "\"",
+  "apostrophe": "'",
+  "space": " ",
+  "newline": "\n",
+  "return": "\r"
+}

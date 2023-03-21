@@ -31,7 +31,7 @@ class FileStream {
   void Close();
  private:
   enum {
-    MAX_BUFFER_SIZE = 100
+    MAX_BUFFER_SIZE = 2048
   };
   std::fstream stream_;
   std::string path_;

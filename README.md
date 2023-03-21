@@ -69,7 +69,16 @@ Please see the CMake documentation and CMakeLists.txt for more advanced usage.
 ![img.png](doc/img/dfa_graph.png)
 
 
-##
+## 题目2.8最小化DFA
 主要的工程文件为`src/dfa.hpp`和`src/dfa.cpp`，并且在2.5的基础之上增加`void MinimizeDFA()`函数
 在`main.cpp`中最后通过这个函数将DFA最小化，最后结果在终端中输出，可以看见，原来5个DFA状态被重新分为了4个DFA状态。
 ![img.png](doc/img/mini_dfa.png)
+
+
+
+## 题目2.10正则表达式-NFA-DFA-min(DFA)-词法分析程序
+主要的工程文件为`src/lex.hpp`和`src/lex.cpp`，并且在之前最小化DFA的基础之上利用其进行词法分析。
+首先，会读取`test/lex.json`文件，其中包含一个词法规则表，规定了各种类型的词法的正则表达式，读取之后将其转化为DFA并最小化保存在内存之中。
+接着逐行扫描`test/input.txt`中的内容并与DFA进行比较，分析文件内容中的词法，划分为token。
+在测试程序中，我们测试了`int x = 1;`，最终将其分析为`Result: a-type space identifier space equal space number semi-colon`，符合预期。
+![img.png](doc/img/lex.png)
