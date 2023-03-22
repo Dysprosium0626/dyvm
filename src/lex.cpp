@@ -8,7 +8,7 @@
 namespace dyvm {
 
 enum {
-  MAX_BUFFER_SIZE = 10000
+  MAX_BUFFER_SIZE = 2049
 };
 
 DFAState GetDFAState(std::vector<DFAState> states, int id) {
@@ -43,7 +43,6 @@ void Lex::Analyze() {
     stream_.getline(buffer, MAX_BUFFER_SIZE);
     auto line = std::string(buffer);
     int x = 0;
-    int y = 0;
     while (x < line.size()) {
       for (const auto &[key, dfa] : dfa_map) {
         std::cout << key << std::endl;

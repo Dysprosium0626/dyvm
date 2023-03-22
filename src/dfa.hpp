@@ -13,6 +13,7 @@ class DFAState {
  public:
   explicit DFAState() {};
   explicit DFAState(int id) : id(id) {};
+  explicit DFAState(int id, bool accepted) : id(id), accepted(accepted) {};
   explicit DFAState(const std::unordered_set<std::shared_ptr<State>> &states) : states(states) {
   }
   int id;

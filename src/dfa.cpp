@@ -244,7 +244,8 @@ void DFA::MinimizeDFA() {
   for (auto &state : minimized_states) {
     auto partition = worklist[state.id];
     for (const auto &id : partition) {
-      auto transitions = GetCertainDFAState(states, id).transitions;
+      auto dfa_state = GetCertainDFAState(states, id);
+      auto transitions = dfa_state.transitions;
       for (const auto &[input, state_ids] : transitions) {
         for (const auto &item : state_ids) {
           for (int i = 0; i < worklist.size(); ++i) {
