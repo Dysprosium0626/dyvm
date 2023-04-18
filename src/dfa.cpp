@@ -54,7 +54,7 @@ void DFA::ConvertNFAToDFA() {
   std::unordered_set<std::shared_ptr<DFAState>> visited;
   std::vector<DFAState> to_visit;
 
-  // Init the visit array with the epsilon enclosure of the start state
+  // Init the visit array with the EPSILON enclosure of the start state
   to_visit.push_back(start_state);
   visited.insert(std::make_shared<DFAState>(start_state));
 
@@ -155,7 +155,7 @@ void DFA::MinimizeDFA() {
   std::vector<std::vector<int>> partitions = {{}, {}};
   std::vector<int> mini_start_ids;
   for (const auto &state : states) {
-    partitions[state.accepted].push_back(state.id);
+      partitions[state.accepted].push_back(state.id);
   }
 
   std::deque<std::vector<int>> worklist;

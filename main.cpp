@@ -4,6 +4,7 @@
 #include "src/file_stream.hpp"
 #include "src/dfa.hpp"
 #include "src/lex.hpp"
+#include "src/parser.hpp"
 
 int main() {
 //  std::string path = "../test/regex_input.txt";
@@ -50,6 +51,13 @@ int main() {
 //    std::cout << std::endl;
 //  }
 
-  dyvm::Lex lex = dyvm::Lex();
-  lex.Analyze();
+//  dyvm::Lex lex = dyvm::Lex();
+//  lex.BuildAnalysisTable();
+
+  dyvm::LL1 parser = dyvm::LL1();
+  parser.Preprocess();
+  parser.GetFirst();
+  parser.GetFollower();
+  parser.BuildAnalysisTable();
+  parser.Analyze();
 }

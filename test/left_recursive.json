@@ -1,0 +1,49 @@
+{
+  "rules": [
+    {
+      "name": "A",
+      "productions": [
+        {
+          "symbols": [
+            {
+              "type": "non-terminal",
+              "value": "A"
+            },
+            {
+              "type": "terminal",
+              "value": "a1"
+            }
+          ]
+        },
+        {
+          "symbols": [
+            {
+              "type": "non-terminal",
+              "value": "A"
+            },
+            {
+              "type": "terminal",
+              "value": "a2"
+            }
+          ]
+        },
+        {
+          "symbols": [
+            {
+              "type": "terminal",
+              "value": "b1"
+            }
+          ]
+        },
+        {
+          "symbols": [
+            {
+              "type": "terminal",
+              "value": "b2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

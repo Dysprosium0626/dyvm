@@ -82,13 +82,17 @@ class Lex {
   }
 
   void Analyze();
-  bool Match(const std::string key, std::string line, int &x, DFAState dfa_state, DFA dfa);
+  bool Match(const std::string &key, std::string line, int &x, const DFAState &dfa_state, DFA dfa);
  public:
   std::string file_path = "../test/test_input.txt";
   std::string regex_path = "../test/lex.json";
   std::vector<std::string> tokens;
   std::map<std::string, DFA> dfa_map;
 };
+
+
+
+
 
 } // dyvm
 

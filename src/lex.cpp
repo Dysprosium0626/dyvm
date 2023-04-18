@@ -15,7 +15,7 @@ DFAState GetDFAState(std::vector<DFAState> states, int id) {
   return states[id];
 }
 
-bool Lex::Match(const std::string key, std::string line, int &x, DFAState dfa_state, DFA dfa) {
+bool Lex::Match(const std::string &key, std::string line, int &x, const DFAState &dfa_state, DFA dfa) {
   bool is_match = false;
   for (const auto &transitions : dfa_state.transitions) {
     if (line[x] == transitions.first) {
