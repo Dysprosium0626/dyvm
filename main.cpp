@@ -51,13 +51,13 @@ int main() {
 //    std::cout << std::endl;
 //  }
 
-//  dyvm::Lex lex = dyvm::Lex();
-//  lex.BuildAnalysisTable();
+  dyvm::Lex lex = dyvm::Lex();
+  lex.Analyze();
 
-  dyvm::LL1 parser = dyvm::LL1();
-  parser.Preprocess();
-  parser.GetFirst();
-  parser.GetFollower();
-  parser.BuildAnalysisTable();
-  parser.Analyze();
+//  dyvm::LL1 parser = dyvm::LL1();
+//  parser.Preprocess();
+//  parser.GetFirst();
+//  parser.GetFollower();
+//  parser.BuildAnalysisTable();
+//  parser.Analyze();
 }

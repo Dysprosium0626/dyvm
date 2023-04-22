@@ -62,11 +62,6 @@ void DFA::ConvertNFAToDFA() {
     // Get a state from the array
     auto current_state = to_visit.back();
     to_visit.pop_back();
-    std::cout << "current state: ";
-    for (const auto &item : current_state.states) {
-      std::cout << item->id << ' ';
-    }
-    std::cout << std::endl;
     std::unordered_map<char, std::unordered_set<std::shared_ptr<State>>> temp;
     for (const auto &state : current_state.states) {
       for (const auto &transition : state->transitions) {
@@ -93,11 +88,6 @@ void DFA::ConvertNFAToDFA() {
         to_visit.push_back(next_dfa_state);
       }
       current_state.AddTransition(input, next_dfa_state);
-      std::cout << "input: " << input << ' ';
-      for (const auto &i : next_dfa_state.states) {
-        std::cout << i->id << ' ';
-      }
-      std::cout << std::endl;
     }
     states.push_back(current_state);
   }
@@ -197,14 +187,6 @@ void DFA::MinimizeDFA() {
     }
     if (diff.size()) {
       worklist.push_back(diff);
-    }
-
-    std::cout << "count" << count << std::endl;
-    for (const auto &item : worklist) {
-      for (const auto &i : item) {
-        std::cout << i << ' ';
-      }
-      std::cout << std::endl;
     }
     count++;
 

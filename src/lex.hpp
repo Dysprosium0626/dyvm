@@ -53,11 +53,6 @@ class Lex {
       auto nfa1 = nfa.RegexToNFA(value);
       DFA dfa(nfa1);
       dfa.ConvertNFAToDFA();
-      std::cout << "start_ids" << ' ';
-      for (const auto &item : dfa.start_ids) {
-        std::cout << item << ' ';
-      }
-      std::cout << std::endl;
       dfa.MinimizeDFA();
       std::cout << "After minimize:" << std::endl;
       std::cout << "start_ids" << ' ';
@@ -66,11 +61,11 @@ class Lex {
       }
       std::cout << std::endl;
       for (const auto &d : dfa.states) {
-        std::cout << d.id << ' ' << &d << ' ' << "accepted " << d.accepted << ' ';
+        std::cout << d.id << ' ' << "accepted " << d.accepted << ' ';
         for (const auto &t : d.transitions) {
           std::cout << t.first << ' ';
           for (const auto &item : t.second) {
-            std::cout << item.id << ' ' << &item << ' ';
+            std::cout << item.id << ' ';
           }
         }
         std::cout << std::endl;

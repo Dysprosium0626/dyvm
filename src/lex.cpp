@@ -45,7 +45,6 @@ void Lex::Analyze() {
     int x = 0;
     while (x < line.size()) {
       for (const auto &[key, dfa] : dfa_map) {
-        std::cout << key << std::endl;
         auto start = dfa.start_ids[0];
         DFAState start_state = GetDFAState(dfa.states, start);
         bool transition_match = false;
@@ -58,9 +57,7 @@ void Lex::Analyze() {
         }
         if (!transition_match) {
           x = origin_x;
-          std::cout << "fail" << std::endl;
         } else {
-          std::cout << "success" << std::endl;
           break;
         }
       }
