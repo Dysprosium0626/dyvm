@@ -51,13 +51,18 @@ int main() {
 //    std::cout << std::endl;
 //  }
 
-  dyvm::Lex lex = dyvm::Lex();
-  lex.Analyze();
+//  dyvm::Lex lex = dyvm::Lex();
+//  lex.Analyze();
 
-//  dyvm::LL1 parser = dyvm::LL1();
+//  dyvm::LL1 parser = dyvm::LL1("../test/syntax_rules.json");
 //  parser.Preprocess();
 //  parser.GetFirst();
 //  parser.GetFollower();
 //  parser.BuildAnalysisTable();
 //  parser.Analyze();
+
+  dyvm::LR0 parser = dyvm::LR0("../test/lr0.json");
+  parser.Preprocess();
+  parser.GetDFA();
+  parser.BuildAnalysisTable();
 }

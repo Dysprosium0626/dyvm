@@ -99,19 +99,19 @@ void dyvm::LL1::GetFirst() {
           non_terminal_first = first[left];
         }
         for (const auto &i : right) {
-          for (int j = 0; j < i.size(); ++j) {
+          for (unsigned long j : i) {
             bool no_epsilon = true;
-            if (IsTerminal(i[j]) or i[j] == EPSILON) {
-              if (auto res = non_terminal_first.find(i[j]); res
+            if (IsTerminal(j) or j == EPSILON) {
+              if (auto res = non_terminal_first.find(j); res
                   == non_terminal_first.end()) {
-                if (i[j] == EPSILON) {
+                if (j == EPSILON) {
                   no_epsilon = false;
                 }
                 changed = true;
-                non_terminal_first.insert(i[j]);
+                non_terminal_first.insert(j);
               }
             }
-            if (auto res = first.find(i[j]); res != first.end()) {
+            if (auto res = first.find(j); res != first.end()) {
               for (const auto &item : res->second) {
                 if (item != EPSILON) {
                   if (auto find = non_terminal_first.find(item); find
@@ -286,11 +286,205 @@ std::string dyvm::LL1::FindKey(size_t value) {
   return {};
 }
 
-bool dyvm::LL1::IsTerminal(size_t id) {
+bool dyvm::Parser::IsTerminal(size_t id) {
   return terminals.find(id) != terminals.end();
 }
 
-bool dyvm::LL1::IsNonTerminal(size_t id) {
+bool dyvm::Parser::IsNonTerminal(size_t id) {
   return non_terminals.find(id) != non_terminals.end();
 }
+
+void dyvm::LR0::Preprocess() {
+  // Add another start token S_prime to ensure the ubiquity
+  std::string s_prime = "S'";
+  auto s_prime_id = tokens.size();
+  tokens.insert(s_prime);
+  materialization.insert(std::make_pair(s_prime, s_prime_id));
+  non_terminals.insert(s_prime_id);
+  std::vector<size_t> right_items = {0};
+  std::vector<std::vector<size_t>> right;
+  right.push_back(right_items);
+  productions.insert(std::make_pair(s_prime_id, right));
+}
+
+void dyvm::LR0::GetDFA() {
+  auto s_prime_id = tokens.size() - 1;
+  std::stack<state_> state_stack;
+  std::vector<state_> states;
+  auto start_item = item_(s_prime_id, productions[s_prime_id][0], 0);
+  auto start_items = GetEnclosure(start_item);
+  state_ state = state_(states.size(), false);
+  state.items_ = start_items;
+  state_stack.push(state);
+
+  while (!state_stack.empty()) {
+    auto curr_dfa_state = state_stack.top();
+    state_stack.pop();
+    curr_dfa_state.id_ = states.size();
+
+    std::cout << "curr state: " << "state id " << curr_dfa_state.id_ << std::endl;
+    for (const auto &item : curr_dfa_state.items_) {
+      std::cout << item.left_ << "->";
+      for (const auto &right : item.right_) {
+        std::cout << right << " ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
+
+    // For each item, if it is not reduced item, add a transition for the state
+    // 1. Get the enclosure of the next item
+    // 2. Insert into transitions
+    // 3. Push next states into the stack
+    // If it is a reduced item, continue
+    if (!curr_dfa_state.is_reduced_) {
+      for (const auto &item : curr_dfa_state.items_) {
+        item_ next_item = item_(item.left_, item.right_, item.dot_ + 1);
+        auto next_items = GetEnclosure(next_item);
+        auto curr_states = states;
+        curr_states.push_back(curr_dfa_state);
+        auto s = GetStateFromDFA(curr_states, next_items);
+        std::cout << "s.id = " << s.id_ << std::endl;
+        if (s.id_ != -1) {
+          curr_dfa_state.AddTransition(item.right_[item.dot_], s);
+
+          std::cout << "add state: " << " s: " << item.right_[item.dot_] << std::endl;
+          for (const auto &i : s.items_) {
+            std::cout << i.left_ << "->";
+            for (const auto &right : i.right_) {
+              std::cout << right << " ";
+            }
+            std::cout << std::endl;
+          }
+          std::cout << std::endl;
+
+        } else {
+          state_ next_state = state_();
+          next_state.is_reduced_ = next_items.size() == 1;
+          next_state.items_ = next_items;
+          curr_dfa_state.AddTransition(item.right_[item.dot_], next_state);
+          state_stack.push(next_state);
+
+          std::cout << "add state: " << " s: " << item.right_[item.dot_] << std::endl;
+          for (const auto &i : next_state.items_) {
+            std::cout << i.left_ << "->";
+            for (const auto &right : i.right_) {
+              std::cout << right << " ";
+            }
+            std::cout << std::endl;
+          }
+          std::cout << std::endl;
+        }
+      }
+    }
+
+    states.push_back(curr_dfa_state);
+  }
+  // Pop the state at the top of the stack
+  dfa_.states = states;
+}
+
+void dyvm::LR0::BuildAnalysisTable() {
+  std::vector<size_t> visited = {0};
+  std::stack<state_> state_stack;
+  state_stack.push(dfa_.states[start]);
+
+  std::map<size_t, std::map<size_t, AnalysisTable_::Operation_>> action_table;  // action表
+  std::map<size_t, std::map<size_t, AnalysisTable_::Operation_>> goto_table;
+
+  for (const auto &curr_dfa_state : dfa_.states) {
+
+    std::cout << "current state: " << curr_dfa_state.id_ << std::endl;
+    std::cout << "is reduced: " << curr_dfa_state.is_reduced_ << std::endl;
+
+    if (curr_dfa_state.is_reduced_) {
+      AnalysisTable_::Operation_ op = AnalysisTable_::Operation_(AnalysisTable_::REDUCE, -1);
+      op.left_ = curr_dfa_state.items_[0].left_;
+      op.right_ = curr_dfa_state.items_[0].right_;
+
+      if (op.right_[0] == 0) {
+        op.action_ = AnalysisTable_::ACCEPT;
+        std::cout << "ACCEPT " << std::endl;
+      } else {
+        std::cout << "REDUCE " << std::endl;
+      }
+      std::map<size_t, AnalysisTable_::Operation_> temp;
+      for (const auto &t : terminals) {
+        temp.insert(std::make_pair(t, op));
+      }
+      action_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+
+    } else {
+      for (const auto &transition : curr_dfa_state.transitions_) {
+        state_ s = GetStateFromDFA(dfa_.states, transition.second.items_);
+
+        if (IsTerminal(transition.first)) {
+          std::map<size_t, AnalysisTable_::Operation_> temp;
+          temp.insert(std::make_pair(transition.first,
+                                     AnalysisTable_::Operation_(AnalysisTable_::SHIFT, s.id_)));
+          action_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+          std::cout << "SHIFT " << s.id_ << std::endl;
+        } else if (IsNonTerminal(transition.first)) {
+          std::map<size_t, AnalysisTable_::Operation_> temp;
+          temp.insert(std::make_pair(transition.first,
+                                     AnalysisTable_::Operation_(AnalysisTable_::GOTO, s.id_)));
+          goto_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+          std::cout << "GOTO " << s.id_ << std::endl;
+
+        }
+      }
+    }
+  }
+}
+
+// e.g. accccd
+void dyvm::LR0::Analyze() {
+  std::vector<size_t> tokens{1, 4, 4, 4, 4, 5};
+  std::deque<size_t> analysis_stack;
+  analysis_stack.push_back(EOT);
+  analysis_stack.push_front(0);
+  int p = 0;
+  while(true) {
+    if (analysis_table_)
+  }
+
+
+
+}
+
+dyvm::LR0::state_ dyvm::LR0::StatesContainItems(const std::vector<state_> &states, const std::vector<item_> &items) {
+  for (const auto &state : states) {
+    for (const auto &item : state.items_) {
+      if (ItemsContainItem(items, item)) {
+        return state;
+      }
+    }
+  }
+  return {};
+}
+
+dyvm::LR0::state_ dyvm::LR0::GetStateFromDFA(const std::vector<state_> &states, const std::vector<item_> &items) {
+  for (const auto &state : states) {
+    bool res = true;
+    for (const auto &item : items) {
+      if (!ItemsContainItem(state.items_, item)) {
+        res = false;
+      }
+    }
+    if (res) {
+      return state;
+    }
+  }
+  return {};
+}
+
+bool dyvm::LR0::ItemsContainItem(const std::vector<item_> &items, const item_ &item) {
+  for (const auto &i : items) {
+    if (i.left_ == item.left_ && i.dot_ == item.dot_ && item_::VectorIsEqual(i.right_, item.right_)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 

@@ -1,0 +1,83 @@
+{
+  "rules": [
+    {
+      "name": "S",
+      "productions": [
+        {
+          "symbols": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "non-terminal",
+              "value": "A"
+            }
+          ]
+        },
+        {
+          "symbols": [
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "non-terminal",
+              "value": "B"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "A",
+      "productions": [
+        {
+          "symbols": [
+            {
+              "type": "terminal",
+              "value": "c"
+            },
+            {
+              "type": "non-terminal",
+              "value": "A"
+            }
+          ]
+        },
+        {
+          "symbols": [
+            {
+              "type": "terminal",
+              "value": "d"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "B",
+      "productions": [
+        {
+          "symbols": [
+            {
+              "type": "terminal",
+              "value": "c"
+            },
+            {
+              "type": "non-terminal",
+              "value": "B"
+            }
+          ]
+        },
+        {
+          "symbols": [
+            {
+              "type": "terminal",
+              "value": "d"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
