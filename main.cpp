@@ -65,4 +65,5 @@ int main() {
   parser.Preprocess();
   parser.GetDFA();
   parser.BuildAnalysisTable();
+  parser.Analyze();
 }

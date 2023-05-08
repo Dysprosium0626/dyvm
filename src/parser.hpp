@@ -215,6 +215,7 @@ class LR0 : Parser {
     class Operation_ {
 
      public:
+      Operation_() {}
       Operation_(action_ action, size_t next) : action_(action), next(next) {}
      public:
       size_t left_{};
@@ -223,8 +224,8 @@ class LR0 : Parser {
       size_t next;
     };
 
-    std::vector<std::vector<Operation_>> actionTable_;  // action表
-    std::vector<std::vector<Operation_>> gotoTable_;    // goto表
+    std::map<size_t, std::map<size_t, AnalysisTable_::Operation_>> action_table_;  // action表
+    std::map<size_t, std::map<size_t, AnalysisTable_::Operation_>> goto_table_;    // goto表
   };
 
  public:

@@ -412,7 +412,15 @@ void dyvm::LR0::BuildAnalysisTable() {
       for (const auto &t : terminals) {
         temp.insert(std::make_pair(t, op));
       }
-      action_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+      temp.insert(std::make_pair(EOT, op));
+      if (auto res = action_table.find(curr_dfa_state.id_); res == action_table.end()) {
+        action_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+      } else {
+        for (const auto &t : terminals) {
+          action_table[curr_dfa_state.id_].insert(std::make_pair(t, op));
+        }
+        action_table[curr_dfa_state.id_].insert(std::make_pair(EOT, op));
+      }
 
     } else {
       for (const auto &transition : curr_dfa_state.transitions_) {
@@ -422,34 +430,73 @@ void dyvm::LR0::BuildAnalysisTable() {
           std::map<size_t, AnalysisTable_::Operation_> temp;
           temp.insert(std::make_pair(transition.first,
                                      AnalysisTable_::Operation_(AnalysisTable_::SHIFT, s.id_)));
-          action_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+          if (auto res = action_table.find(curr_dfa_state.id_); res == action_table.end()) {
+            action_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+          } else {
+            action_table[curr_dfa_state.id_].insert(std::make_pair(transition.first,
+                                                                   AnalysisTable_::Operation_(AnalysisTable_::SHIFT,
+                                                                                              s.id_)));
+          }
           std::cout << "SHIFT " << s.id_ << std::endl;
         } else if (IsNonTerminal(transition.first)) {
           std::map<size_t, AnalysisTable_::Operation_> temp;
+
           temp.insert(std::make_pair(transition.first,
                                      AnalysisTable_::Operation_(AnalysisTable_::GOTO, s.id_)));
-          goto_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+
+          if (auto res = goto_table.find(curr_dfa_state.id_); res == goto_table.end()) {
+            goto_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+          } else {
+            goto_table[curr_dfa_state.id_].insert(std::make_pair(transition.first,
+                                                                 AnalysisTable_::Operation_(AnalysisTable_::GOTO,
+                                                                                            s.id_)));
+          }
+
           std::cout << "GOTO " << s.id_ << std::endl;
 
         }
       }
     }
   }
+  analysis_table_.action_table_ = action_table;
+  analysis_table_.goto_table_ = goto_table;
+
 }
 
 // e.g. accccd
 void dyvm::LR0::Analyze() {
-  std::vector<size_t> tokens{1, 4, 4, 4, 4, 5};
+  std::vector<size_t> tokens{1, 4, 4, 4, 4, 5, EOT};
   std::deque<size_t> analysis_stack;
   analysis_stack.push_back(EOT);
   analysis_stack.push_front(0);
   int p = 0;
-  while(true) {
-    if (analysis_table_)
+  while (true) {
+    auto it = analysis_stack[0];
+    auto op = analysis_table_.action_table_[it][tokens[p]];
+    if (op.action_ == AnalysisTable_::SHIFT) {
+      std::cout << "SHIFT" << std::endl;
+      analysis_stack.push_front(tokens[p]);
+      analysis_stack.push_front(op.next);
+      p++;
+    } else if (op.action_ == AnalysisTable_::REDUCE) {
+      std::cout << "REDUCE" << std::endl;
+      for (int i = 0; i < 2 * op.right_.size(); ++i) {
+        analysis_stack.pop_front();
+      }
+      auto top = analysis_stack.front();
+      analysis_stack.push_front(op.left_);
+      auto s1 = analysis_table_.goto_table_[top][op.left_];
+      analysis_stack.push_front(s1.next);
+    } else if (op.action_ == AnalysisTable_::ACCEPT) {
+      std::cout << "success" << std::endl;
+      return;
+    }
+
+    for (const auto &item : analysis_stack) {
+      std::cout << item << " ";
+    }
+    std::cout << std::endl;
   }
-
-
-
 }
 
 dyvm::LR0::state_ dyvm::LR0::StatesContainItems(const std::vector<state_> &states, const std::vector<item_> &items) {
