@@ -111,7 +111,7 @@ class Parser {
 
 };
 
-class LL1 : Parser {
+class LL1 : public Parser {
  public:
   LL1(std::string s) : Parser(s) {
   };
@@ -133,7 +133,7 @@ class LL1 : Parser {
 
 };
 
-class LR0 : Parser {
+class LR0 : public Parser {
  public:
   LR0(std::string s) : Parser(s) {
   }
@@ -234,11 +234,11 @@ class LR0 : Parser {
 
  public:
   void Preprocess() override;
-  void GetDFA();
+  virtual void GetDFA();
   void BuildAnalysisTable() override;
   void Analyze() override;
 
- private:
+ protected:
   std::vector<item_> GetEnclosure(item_ &items) {
     std::vector<item_> res = {items};
     std::vector<item_> res1 = {items};
@@ -270,6 +270,27 @@ class LR0 : Parser {
   static bool ItemsContainItem(const std::vector<item_> &items, const item_ &item);
   state_ GetStateFromDFA(const std::vector<state_> &states, const std::vector<item_> &items);
 };
+
+class SLR1: public LR0 {
+ public:
+  explicit SLR1(const std::string &s) : LR0(s), ll_1_parser(s) {
+  };
+ public:
+  void GetDFA() override;
+  void JudgeCanSLR1();
+  void BuildAnalysisTable() override;
+
+
+ public:
+  bool can_slr1 = true;
+  std::vector<size_t> conflict_items;
+  LL1 ll_1_parser;
+
+ private:
+  std::unordered_set<size_t> GetIntersection(std::unordered_set<size_t> set1, std::unordered_set<size_t> set2);
+
+};
+
 
 }
 #endif //DYVM_SRC_PARSER_HPP_

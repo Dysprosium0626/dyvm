@@ -2,6 +2,8 @@
 // Created by Dysprosium on 2023/4/6.
 //
 #include "parser.hpp"
+#include <stack>
+#include <set>
 
 void dyvm::LL1::Preprocess() {
   // Eliminate left recursive
@@ -451,16 +453,13 @@ void dyvm::LR0::BuildAnalysisTable() {
                                                                  AnalysisTable_::Operation_(AnalysisTable_::GOTO,
                                                                                             s.id_)));
           }
-
           std::cout << "GOTO " << s.id_ << std::endl;
-
         }
       }
     }
   }
   analysis_table_.action_table_ = action_table;
   analysis_table_.goto_table_ = goto_table;
-
 }
 
 // e.g. accccd
@@ -532,6 +531,218 @@ bool dyvm::LR0::ItemsContainItem(const std::vector<item_> &items, const item_ &i
     }
   }
   return false;
+}
+
+void dyvm::SLR1::GetDFA() {
+  LR0::GetDFA();
+  for (const auto &state : dfa_.states) {
+    if (state.items_.size() > 1 and state.items_[0].dot_ > 0) {
+      bool conflict_flag = true;
+      size_t common_nonterminal = state.items_[0].right_[state.items_[0].dot_ - 1];
+      for (const auto &item : state.items_) {
+        if (item.dot_ != 0 and item.right_[item.dot_ - 1] != common_nonterminal) {
+          conflict_flag = false;
+        }
+      }
+      if (conflict_flag) {
+        conflict_items.push_back(state.id_);
+      }
+    }
+  }
+}
+
+// TODO Build analysis table
+void dyvm::SLR1::BuildAnalysisTable() {
+  if (!can_slr1) {
+    std::cerr << "Cannot use SLR(1)!" << std::endl;
+    return;
+  }
+
+  std::vector<size_t> visited = {0};
+  std::stack<state_> state_stack;
+  state_stack.push(dfa_.states[start]);
+
+  std::map<size_t, std::map<size_t, AnalysisTable_::Operation_>> action_table;  // action表
+  std::map<size_t, std::map<size_t, AnalysisTable_::Operation_>> goto_table;
+
+  for (const auto &curr_dfa_state : dfa_.states) {
+    std::cout << "current state: " << curr_dfa_state.id_ << std::endl;
+    std::cout << "is reduced: " << curr_dfa_state.is_reduced_ << std::endl;
+    if (curr_dfa_state.is_reduced_) {
+      AnalysisTable_::Operation_ op = AnalysisTable_::Operation_(AnalysisTable_::REDUCE, -1);
+      op.left_ = curr_dfa_state.items_[0].left_;
+      op.right_ = curr_dfa_state.items_[0].right_;
+      if (op.right_[0] == 0) {
+        op.action_ = AnalysisTable_::ACCEPT;
+        std::cout << "ACCEPT " << std::endl;
+      } else {
+        std::cout << "REDUCE " << std::endl;
+      }
+      std::map<size_t, AnalysisTable_::Operation_> temp;
+      for (const auto &t : terminals) {
+        temp.insert(std::make_pair(t, op));
+      }
+      temp.insert(std::make_pair(EOT, op));
+      if (auto res = action_table.find(curr_dfa_state.id_); res == action_table.end()) {
+        action_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+      } else {
+        // Add to all follow of the left
+        for (const auto &t : ll_1_parser.follower[curr_dfa_state.items_[0].left_]) {
+          action_table[curr_dfa_state.id_].insert(std::make_pair(t, op));
+        }
+        action_table[curr_dfa_state.id_].insert(std::make_pair(EOT, op));
+      }
+    } else {
+      // Whether it is conflict item
+      if (auto conflict = std::find(conflict_items.begin(), conflict_items.end(), curr_dfa_state.id_); conflict
+          == conflict_items.end()) {
+        for (const auto &transition : curr_dfa_state.transitions_) {
+          state_ s = GetStateFromDFA(dfa_.states, transition.second.items_);
+          if (IsTerminal(transition.first)) {
+            std::map<size_t, AnalysisTable_::Operation_> temp;
+            temp.insert(std::make_pair(transition.first,
+                                       AnalysisTable_::Operation_(AnalysisTable_::SHIFT, s.id_)));
+            if (auto res = action_table.find(curr_dfa_state.id_); res == action_table.end()) {
+              action_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+            } else {
+              action_table[curr_dfa_state.id_].insert(std::make_pair(transition.first,
+                                                                     AnalysisTable_::Operation_(AnalysisTable_::SHIFT,
+                                                                                                s.id_)));
+            }
+            std::cout << "SHIFT " << s.id_ << std::endl;
+          } else if (IsNonTerminal(transition.first)) {
+            std::map<size_t, AnalysisTable_::Operation_> temp;
+
+            temp.insert(std::make_pair(transition.first,
+                                       AnalysisTable_::Operation_(AnalysisTable_::GOTO, s.id_)));
+
+            if (auto res = goto_table.find(curr_dfa_state.id_); res == goto_table.end()) {
+              goto_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+            } else {
+              goto_table[curr_dfa_state.id_].insert(std::make_pair(transition.first,
+                                                                   AnalysisTable_::Operation_(AnalysisTable_::GOTO,
+                                                                                              s.id_)));
+            }
+            std::cout << "GOTO " << s.id_ << std::endl;
+          }
+        }
+      } else {
+        // Conflict item
+        for (const auto &item : curr_dfa_state.items_) {
+          if (item.dot_ == item.right_.size()) {
+            // Reduce item
+            AnalysisTable_::Operation_ op = AnalysisTable_::Operation_(AnalysisTable_::REDUCE, -1);
+            op.left_ = item.left_;
+            op.right_ = item.right_;
+            if (op.right_[0] == 0) {
+              op.action_ = AnalysisTable_::ACCEPT;
+              std::cout << "ACCEPT " << std::endl;
+            } else {
+              std::cout << "REDUCE " << std::endl;
+            }
+            std::map<size_t, AnalysisTable_::Operation_> temp;
+            for (const auto &t : terminals) {
+              temp.insert(std::make_pair(t, op));
+            }
+            temp.insert(std::make_pair(EOT, op));
+            if (auto res = action_table.find(curr_dfa_state.id_); res == action_table.end()) {
+              action_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+            } else {
+              // Add to all follow of the left
+              for (const auto &t : ll_1_parser.follower[item.left_]) {
+                action_table[curr_dfa_state.id_].insert(std::make_pair(t, op));
+              }
+              action_table[curr_dfa_state.id_].insert(std::make_pair(EOT, op));
+            }
+          } else {
+            // Shift item
+            for (const auto &transition : curr_dfa_state.transitions_) {
+              state_ s = GetStateFromDFA(dfa_.states, transition.second.items_);
+              if (IsTerminal(transition.first)) {
+                std::map<size_t, AnalysisTable_::Operation_> temp;
+                temp.insert(std::make_pair(transition.first,
+                                           AnalysisTable_::Operation_(AnalysisTable_::SHIFT, s.id_)));
+                if (auto res = action_table.find(curr_dfa_state.id_); res == action_table.end()) {
+                  action_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+                } else {
+                  action_table[curr_dfa_state.id_].insert(std::make_pair(transition.first,
+                                                                         AnalysisTable_::Operation_(AnalysisTable_::SHIFT,
+                                                                                                    s.id_)));
+                }
+                std::cout << "SHIFT " << s.id_ << std::endl;
+              } else if (IsNonTerminal(transition.first)) {
+                std::map<size_t, AnalysisTable_::Operation_> temp;
+
+                temp.insert(std::make_pair(transition.first,
+                                           AnalysisTable_::Operation_(AnalysisTable_::GOTO, s.id_)));
+
+                if (auto res = goto_table.find(curr_dfa_state.id_); res == goto_table.end()) {
+                  goto_table.insert(std::make_pair(curr_dfa_state.id_, temp));
+                } else {
+                  goto_table[curr_dfa_state.id_].insert(std::make_pair(transition.first,
+                                                                       AnalysisTable_::Operation_(AnalysisTable_::GOTO,
+                                                                                                  s.id_)));
+                }
+                std::cout << "GOTO " << s.id_ << std::endl;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  analysis_table_.action_table_ = action_table;
+  analysis_table_.goto_table_ = goto_table;
+}
+
+void dyvm::SLR1::JudgeCanSLR1() {
+  ll_1_parser.Preprocess();
+  ll_1_parser.GetFirst();
+  ll_1_parser.GetFollower();
+
+  for (const auto &id : conflict_items) {
+    std::unordered_set<size_t> intersection;
+    auto state = dfa_.states[id];
+    for (const auto &item : state.items_) {
+      if (item.dot_ == item.right_.size()) {
+        auto set1 = ll_1_parser.follower[item.left_];
+        if (intersection.empty()) {
+          intersection.insert(set1.begin(), set1.end());
+        } else {
+          auto inter = GetIntersection(intersection, set1);
+          intersection.insert(inter.begin(), inter.end());
+        }
+      } else {
+        std::unordered_set<size_t> set1{item.right_[item.dot_]};
+        if (intersection.empty()) {
+          intersection.insert(set1.begin(), set1.end());
+        } else {
+          auto inter = GetIntersection(intersection, set1);
+          intersection.insert(inter.begin(), inter.end());
+        }
+      }
+    }
+    if (!intersection.empty()) {
+      can_slr1 = false;
+    }
+  }
+}
+
+std::unordered_set<size_t> dyvm::SLR1::GetIntersection(std::unordered_set<size_t> set1,
+                                                       std::unordered_set<size_t> set2) {
+  std::set<size_t> orderedSet1(set1.begin(), set1.end());
+  std::set<size_t> orderedSet2(set2.begin(), set2.end());
+
+  std::set<size_t> intersection;
+
+  std::set_intersection(orderedSet1.begin(), orderedSet1.end(),
+                        orderedSet2.begin(), orderedSet2.end(),
+                        std::inserter(intersection, intersection.begin()));
+
+  set1.clear();
+  set1.insert(intersection.begin(), intersection.end());
+
+  return std::unordered_set<size_t>{intersection.begin(), intersection.end()};
 }
 
 
